@@ -53,7 +53,7 @@
     "@identity-backend/vitest-config": "workspace:^",
     "@vitest/coverage-v8": "catalog:",
     "effect": "catalog:",
-    "hono": "^4.12.18",
+    "hono": "^4.12.25",
     "tsdown": "catalog:",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "catalog:"
@@ -63,7 +63,7 @@
     "@identity-backend/auth": "workspace:^",
     "@identity-backend/play-integrity": "workspace:^",
     "effect": "catalog:",
-    "hono": "^4.12.18"
+    "hono": "^4.12.25"
   },
   "publishConfig": {
     "exports": {

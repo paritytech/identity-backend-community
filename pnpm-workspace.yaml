@@ -27,7 +27,7 @@ catalog:
   "@effect/vitest": 0.29.0
   "@fontsource/dm-serif-display": ^5.2.8
   "@fontsource/inter": ^5.2.8
-  "@microsoft/api-extractor": ^7.58.7
+  "@microsoft/api-extractor": ^7.58.8
   "@noble/hashes": ^2.2.0
   "@opentelemetry/api": ^1.9
   "@opentelemetry/auto-instrumentations-node": ^0.73.0
@@ -49,14 +49,14 @@ catalog:
   "@polkadot-api/substrate-bindings": ^0.20.3
   "@polkadot-api/substrate-client": ^0.7.0
   "@polkadot-api/utils": ^0.4.0
-  "@scalar/api-reference-react": ^0.9.27
+  "@scalar/api-reference-react": ^0.9.45
   "@semantic-release/commit-analyzer": ^13.0.1
   "@semantic-release/git": ^10.0.1
-  "@semantic-release/github": ^12.0.6
-  "@semantic-release/release-notes-generator": ^14.1.0
-  "@sentry/bun": ^10.49.0
-  "@sentry/opentelemetry": ^10.49.0
-  "@types/bun": ^1.3.13
+  "@semantic-release/github": ^12.0.8
+  "@semantic-release/release-notes-generator": ^14.1.1
+  "@sentry/bun": ^10.57.0
+  "@sentry/opentelemetry": ^10.57.0
+  "@types/bun": ^1.3.14
   "@types/node": ^24
   "@types/web-push": ^3.6.4
   "@typescript/native-preview": latest
@@ -68,9 +68,9 @@ catalog:
   polkadot-api: ^2.1.5
   rollup-plugin-visualizer: ^7.0.1
   rxjs: ^7.8.2
-  semantic-release: ^25.0.3
-  tsdown: ^0.21.9
-  vite-bundle-analyzer: ^1.3.7
+  semantic-release: ^25.0.5
+  tsdown: ^0.22.2
+  vite-bundle-analyzer: ^1.3.8
   vitest: ^4
   web-push: ^3.6.7
 
