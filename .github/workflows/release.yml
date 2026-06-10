@@ -68,7 +68,7 @@ jobs:
     env:
       HUSKY: 0
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -114,7 +114,7 @@ jobs:
       VERSION: ${{ needs.build-images.outputs.tag }}
       GAR_REGISTRY: "us-docker.pkg.dev/polkadot-community-foundation/identity-backend"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: ./.github/actions/gar-auth
         with:
