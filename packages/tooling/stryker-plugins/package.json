@@ -35,7 +35,7 @@
     "@stryker-mutator/api": "^9.6.1"
   },
   "devDependencies": {
-    "@babel/types": "^7.29.0",
+    "@babel/types": "^7.29.7",
     "@effect/vitest": "catalog:",
     "@identity-backend/oxlint-config": "workspace:^",
     "@identity-backend/testing": "workspace:^",
@@ -47,7 +47,7 @@
     "@vitest/coverage-v8": "catalog:",
     "effect": "catalog:",
     "tsdown": "catalog:",
-    "tstyche": "^7.1.0",
+    "tstyche": "^7.2.1",
     "typescript": "^6.0.3",
     "vitest": "catalog:"
   },
