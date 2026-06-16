@@ -6,7 +6,7 @@ This document explains the on-chain mechanics for granting attestation allowance
 
 ## Pre-requisite: the community bootstrap has run
 
-The on-chain state for the attester account — funding, **`AttestationAllowance` grants on BOTH People and AssetHub**, sudo proxy delegation, DotNS gateway dispatcher address — is owned by the public bootstrap scripts in **`paritytech/individuality-community/tree/main/scripts/initial-setup/`** (vendored read-only at `repos/individuality-community/scripts/initial-setup/`). This repo does not own those scripts and the SST deploy does not run them.
+The on-chain state for the attester account — funding, **`AttestationAllowance` grants on BOTH People and AssetHub**, sudo proxy delegation, DotNS gateway dispatcher address — is owned by the public bootstrap scripts in **`paritytech/individuality-community/tree/main/scripts/initial-setup/`**. This repo does not own those scripts and the SST deploy does not run them.
 
 The canonical grant flow is **`12b-setup-attestation-allowances.sh`** (in that directory), which submits `peopleLite.increase_attestation_allowance` on People AND `dotnsGateway.increase_attestation_allowance` on Asset Hub in one orchestrated run. **`12c-setup-attestation-proxy.sh`** sets the proxy delegation.
 
@@ -18,8 +18,8 @@ This document is the read-the-code-behind-the-script companion to the community 
 
 ## People chain: `peopleLite` pallet
 
-**Source:** `repos/individuality-community/pallets/people-lite/src/lib.rs`
-**Runtime wiring:** `repos/individuality-community/runtimes/next-people-paseo/src/people.rs:985`
+**Source:** `paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs`
+**Runtime wiring:** `paritytech/individuality-community/tree/main/runtimes/next-people-paseo/src/people.rs:985`
 
 ### Extrinsics
 
@@ -32,7 +32,7 @@ This document is the read-the-code-behind-the-script companion to the community 
 | **Dispatch origin** | `AttestationAllowanceManager` — wired to **`EnsureRoot<AccountId>`** in the next-people-paseo runtime |
 
 ```rust
-// repos/individuality-community/pallets/people-lite/src/lib.rs:247-258
+// paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs:247-258
 #[pallet::call_index(0)]
 #[pallet::weight(<T as Config>::WeightInfo::increase_attestation_allowance())]
 pub fn increase_attestation_allowance(
@@ -66,7 +66,7 @@ pub fn increase_attestation_allowance(
 | **Dispatch origin** | **`Signed`** — any account with non-zero `AttestationAllowance` balance                                                                                                                               |
 
 ```rust
-// repos/individuality-community/pallets/people-lite/src/lib.rs:317-334
+// paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs:317-334
 pub fn attest(
     origin: OriginFor<T>,
     candidate: T::AccountId,
@@ -87,7 +87,7 @@ pub fn attest(
 ### Storage
 
 ```rust
-// repos/individuality-community/pallets/people-lite/src/lib.rs:172
+// paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs:172
 pub type AttestationAllowance<T: Config> =
     StorageMap<_, Blake2_128Concat, T::AccountId, u32, ValueQuery>;
 ```
@@ -99,7 +99,7 @@ pub type AttestationAllowance<T: Config> =
 The runtime wires `AttestationAllowanceManager = EnsureRoot<AccountId>`:
 
 ```rust
-// repos/individuality-community/runtimes/next-people-paseo/src/people.rs:983-985
+// paritytech/individuality-community/tree/main/runtimes/next-people-paseo/src/people.rs:983-985
 impl indiv_pallet_people_lite::Config for Runtime {
     type AttestationAllowanceManager = EnsureRoot<Self::AccountId>;
     // ...
@@ -117,7 +117,7 @@ impl indiv_pallet_people_lite::Config for Runtime {
 | **Root / Sudo account**              | Success (or `DispatchResult::Ok`)                                                                                        |
 
 ```rust
-// repos/individuality-community/pallets/people-lite/src/lib.rs:252
+// paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs:252
 T::AttestationAllowanceManager::ensure_origin(origin)?;  // Err(BadOrigin) for Signed
 ```
 
@@ -143,22 +143,22 @@ pub enum Error<T> {
 }
 ```
 
-**Source:** `repos/individuality-community/pallets/people-lite/src/lib.rs`
-**Runtime proof:** `repos/individuality-community/runtimes/next-people-paseo/src/people.rs:985`
+**Source:** `paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs`
+**Runtime proof:** `paritytech/individuality-community/tree/main/runtimes/next-people-paseo/src/people.rs:985`
 
 ---
 
 ## Asset Hub: `dotnsGateway` pallet
 
-**Source:** `repos/individuality-community/pallets/dotns-gateway/src/lib.rs`
-**Runtime wiring:** `repos/individuality-community/runtimes/next-asset-hub-paseo/src/lib.rs:1282`
+**Source:** `paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs`
+**Runtime wiring:** `paritytech/individuality-community/tree/main/runtimes/next-asset-hub-paseo/src/lib.rs:1282`
 
 ### The attester must have BOTH allowances
 
 On Asset Hub, the `dotnsGateway` pallet is a **separate pallet on a separate chain** (Asset Hub, not People chain). The attester account that can call `peopleLite.attest` on the People chain **also needs a separate allowance on Asset Hub** to call `dotnsGateway.reserve_name`. The two allowances are independent storage items on independent chains.
 
 ```rust
-// Asset Hub storage — repos/individuality-community/pallets/dotns-gateway/src/lib.rs:172
+// Asset Hub storage — paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs:172
 pub type AttestationAllowance<T: Config> =
     StorageMap<_, Blake2_128Concat, T::AccountId, u32, ValueQuery>;  // separate from People chain
 ```
@@ -174,7 +174,7 @@ pub type AttestationAllowance<T: Config> =
 | **Dispatch origin** | `AttestationAllowanceManager` — wired to **`EnsureRoot<AccountId>`** in the next-asset-hub-paseo runtime |
 
 ```rust
-// repos/individuality-community/pallets/dotns-gateway/src/lib.rs:455-466
+// paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs:455-466
 #[pallet::call_index(2)]
 #[pallet::weight(<T as Config>::WeightInfo::increase_attestation_allowance())]
 pub fn increase_attestation_allowance(
@@ -207,7 +207,7 @@ pub fn increase_attestation_allowance(
 | **Dispatch origin** | `DispatcherAddressManager` — also **`EnsureRoot`** in this runtime |
 
 ```rust
-// repos/individuality-community/pallets/dotns-gateway/src/lib.rs:1283
+// paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs:1283
 type DispatcherAddressManager = EnsureRoot<AccountId>;
 ```
 
@@ -220,7 +220,7 @@ type DispatcherAddressManager = EnsureRoot<AccountId>;
 | **Dispatch origin** | **`Signed`** — any account with non-zero `AttestationAllowance` on Asset Hub                                                                                                       |
 
 ```rust
-// repos/individuality-community/pallets/dotns-gateway/src/lib.rs:316-364
+// paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs:316-364
 pub fn reserve_name(
     origin: OriginFor<T>,
     candidate: T::AccountId,
@@ -267,8 +267,8 @@ pub enum Error<T> {
 }
 ```
 
-**Source:** `repos/individuality-community/pallets/dotns-gateway/src/lib.rs`
-**Runtime proof:** `repos/individuality-community/runtimes/next-asset-hub-paseo/src/lib.rs:1282-1283`
+**Source:** `paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs`
+**Runtime proof:** `paritytech/individuality-community/tree/main/runtimes/next-asset-hub-paseo/src/lib.rs:1282-1283`
 
 ---
 
@@ -276,7 +276,7 @@ pub enum Error<T> {
 
 > ⚠️ **This is the first-time operator's primary stuck point.**
 
-The workflow described in `repos/individuality-community/docs/operations.md` states:
+The workflow described in `paritytech/individuality-community/tree/main/docs/operations.md` states:
 
 > "Every privileged call in the Individuality pallets is gated by a manager origin that the pallet defines itself (`AttestationAllowanceManager`, etc.). These origins can be the same account or several different ones — **it is up to the runtime**. How those origins are satisfied is a deployment choice: whoever deploys the runtime decides how to back each one — **sudo (`EnsureRoot`), a proxy, governance, or a dedicated account per role**."
 
@@ -318,7 +318,7 @@ Both the People chain and Asset Hub runtimes wire `AttestationAllowanceManager =
 
 > **The key insight:** The operator generates the key, sets `ATTESTER_PUBLIC_KEY`, and deploys. The **chain admin** grants the allowance. These are two separate roles.
 
-**Source:** `repos/individuality-community/docs/operations.md:5-13`
+**Source:** `paritytech/individuality-community/tree/main/docs/operations.md:5-13`
 
 ---
 
@@ -359,6 +359,18 @@ The key expansion script (using `@polkadot-labs/hdkd-helpers` + the workspace's 
 If the operator mistakenly pastes the 32-byte seed or the original mnemonic, the backend will fail to sign transactions.
 
 **Fix:** Confirm the key expansion script outputs a 128-character hex string (`0x` + 128 hex chars = 130 total chars).
+
+---
+
+### 4. The dedicated invitation-pool account follows the same proxy pattern
+
+`INVITER_POOL_PRIVATE_KEY` is a second proxy submitter for the attester authority, used by the invitation-ticket pool daemon so its refill traffic does not contend with username registration on the shared submission permit. It follows the exact same rules as `ATTESTER_PROXY_PRIVATE_KEY` above:
+
+- It is the **expanded 64-byte** sr25519 private key (128 hex chars), never the 32-byte seed or the mnemonic.
+- It is **network-agnostic** — the same private key signs on any network.
+- Its **proxy delegation** must be registered on-chain before it can submit. The community bootstrap script `12c-setup-attestation-proxy.sh` (in `paritytech/individuality-community`) is the source of truth for registering the proxy relationship; this repo's SST deploy does not run it.
+- It must be **funded** with existential deposit + transaction fees on the People chain.
+- Pair with `INVITATION_TICKET_POOL_TARGET` / `INVITATION_TICKET_BATCH_SIZE` — raise those values only after the dedicated pool key is in place, so the higher refill traffic does not contend with username registration on the shared signer.
 
 ---
 
@@ -430,11 +442,11 @@ The SS58 address format includes a **network prefix** that changes the human-rea
 
 ## Sources
 
-- **People Lite pallet source:** `repos/individuality-community/pallets/people-lite/src/lib.rs`
-- **DotnsGateway pallet source:** `repos/individuality-community/pallets/dotns-gateway/src/lib.rs`
-- **People chain runtime wiring:** `repos/individuality-community/runtimes/next-people-paseo/src/people.rs:985`
-- **Asset Hub runtime wiring:** `repos/individuality-community/runtimes/next-asset-hub-paseo/src/lib.rs:1282-1283`
-- **Operations guide:** `repos/individuality-community/docs/operations.md`
+- **People Lite pallet source:** `paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs`
+- **DotnsGateway pallet source:** `paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs`
+- **People chain runtime wiring:** `paritytech/individuality-community/tree/main/runtimes/next-people-paseo/src/people.rs:985`
+- **Asset Hub runtime wiring:** `paritytech/individuality-community/tree/main/runtimes/next-asset-hub-paseo/src/lib.rs:1282-1283`
+- **Operations guide:** `paritytech/individuality-community/tree/main/docs/operations.md`
 - **Substrate origins:** <https://docs.substrate.io/build/origins/>
 - **Polkadot OpenGov:** <https://wiki.polkadot.network/docs/learn-polkadot-opengov>
 - **Polkadot origins and fees:** <https://wiki.polkadot.network/docs/learn-origins-and-fees>

@@ -34,7 +34,7 @@ Client → Cloudflare (DNS, rate-limit, firewall) → ALB → ECS/Fargate → RD
 
 ## Chain-state prerequisites (Polkadot People / AssetHub)
 
-The on-chain state this repo depends on — funded attester accounts, `AttestationAllowance` grants on **both** People and AssetHub, sudo proxy delegation, DotNS gateway dispatcher address, attestation invite pool, etc. — is **not provisioned by this repo's deploy.** It is owned by the **public** `paritytech/individuality-community` repo's bootstrap scripts, which live at `paritytech/individuality-community/tree/main/scripts/initial-setup/` (vendored read-only at `repos/individuality-community/scripts/initial-setup/` in the internal tree).
+The on-chain state this repo depends on — funded attester accounts, `AttestationAllowance` grants on **both** People and AssetHub, sudo proxy delegation, DotNS gateway dispatcher address, attestation invite pool, etc. — is **not provisioned by this repo's deploy.** It is owned by the **public** `paritytech/individuality-community` repo's bootstrap scripts, which live at `paritytech/individuality-community/tree/main/scripts/initial-setup/`.
 
 Read that README first if you are bringing up a fresh People / AssetHub pair. The two scripts this repo's deploy assumes are already executed:
 
@@ -69,6 +69,8 @@ pnpm observability:render-contact-points   # bakes the URL into the LGTM image
 pnpm sst secret set JWT_AUTH_SECRET            "$(openssl rand -base64 48)" --stage dev
 pnpm sst secret set PROXY_PRIVATE_KEY          "<128-hex expanded sr25519 key>" --stage dev
 pnpm sst secret set ATTESTER_PROXY_PRIVATE_KEY "<128-hex expanded sr25519 key>" --stage dev
+# Invitation-pool dedicated signer. Add to infra/secrets.ts and uncomment for dedicated-account deployments.
+# pnpm sst secret set INVITER_POOL_PRIVATE_KEY  "<128-hex expanded sr25519 key>" --stage dev
 pnpm sst secret set WEB_PUSH_VAPID_PRIVATE_KEY "$(bun -e 'console.log(require(\"web-push\").generateVAPIDKeys().privateKey)')" --stage dev
 pnpm sst secret set DEVICE_CHECK_PRIVATE_KEY   "$(cat AuthKey_XXXXX.p8)"             --stage dev   # raw PKCS#8 PEM
 pnpm sst secret set ADMIN_PASSWORD             "$(openssl rand -base64 24)"        --stage dev

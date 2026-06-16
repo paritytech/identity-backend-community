@@ -10,9 +10,14 @@ import { Schema as S } from 'effect'
  *                    verdict, but keep app recognition and licensing
  *                    strict.
  * `relaxed_all`    — preview/debug: relax device integrity, app
- *                    recognition (allow `UNRECOGNIZED_VERSION` from
- *                    sideloaded builds) and licensing (allow
- *                    `UNLICENSED`).
+ *                    recognition (allow `UNRECOGNIZED_VERSION` and
+ *                    `UNEVALUATED` from sideloaded builds) and licensing
+ *                    (allow `UNLICENSED`). Google populates
+ *                    `packageName` and `certificateSha256Digest` only
+ *                    when `appRecognitionVerdict != UNEVALUATED`, so this
+ *                    mode also tolerates those fields being absent. A
+ *                    field that is present but does not match is still
+ *                    rejected in every mode.
  */
 export type PlayIntegrityMode = 'strict' | 'relaxed_device' | 'relaxed_all'
 export const PlayIntegrityMode: S.Schema<PlayIntegrityMode> = S.Literal(

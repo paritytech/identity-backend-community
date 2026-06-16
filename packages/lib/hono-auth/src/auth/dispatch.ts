@@ -1,24 +1,39 @@
+import { Schema as S } from 'effect'
+
 export type AndroidDispatchDecision =
   | { readonly _tag: 'Skip' }
   | { readonly _tag: 'PlayIntegrity' }
   | { readonly _tag: 'KeyAttestation' }
+  | { readonly _tag: 'Voucher' }
   | { readonly _tag: 'MissingAttestationType' }
   | { readonly _tag: 'UnknownAttestationType' }
 
-export interface AndroidDispatchInput {
-  readonly iosPackage: string | undefined
-  readonly androidPackage: string | undefined
-  readonly attestationToken: string | undefined
-  readonly attestationType: string | undefined
-}
+/** Attestation types the dispatch recognizes. Anything else yields `UnknownAttestationType`. */
+export const KNOWN_ATTESTATION_TYPES = ['play-integrity', 'key-attestation', 'voucher'] as const
+
+export const AndroidDispatchInput = S.Struct({
+  iosPackage: S.UndefinedOr(S.String),
+  androidPackage: S.UndefinedOr(S.String),
+  attestationToken: S.UndefinedOr(S.String),
+  attestationType: S.UndefinedOr(S.String),
+})
+export type AndroidDispatchInput = S.Schema.Type<typeof AndroidDispatchInput>
+
+const KEY_ATTESTATION = 'key-attestation' as const
+const VOUCHER = 'voucher' as const
+const PLAY_INTEGRITY = 'play-integrity' as const
 
 export const decideAndroidDispatch = (input: AndroidDispatchInput): AndroidDispatchDecision => {
   if (input.iosPackage !== undefined) {
     return { _tag: 'Skip' }
   }
 
-  if (input.attestationType === 'key-attestation') {
+  if (input.attestationType === KEY_ATTESTATION) {
     return { _tag: 'KeyAttestation' }
+  }
+
+  if (input.attestationType === VOUCHER) {
+    return { _tag: 'Voucher' }
   }
 
   if (
@@ -32,10 +47,9 @@ export const decideAndroidDispatch = (input: AndroidDispatchInput): AndroidDispa
     return { _tag: 'MissingAttestationType' }
   }
 
-  switch (input.attestationType) {
-    case 'play-integrity':
-      return { _tag: 'PlayIntegrity' }
-    default:
-      return { _tag: 'UnknownAttestationType' }
+  if (input.attestationType === PLAY_INTEGRITY) {
+    return { _tag: 'PlayIntegrity' }
   }
+
+  return { _tag: 'UnknownAttestationType' }
 }

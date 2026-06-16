@@ -33,7 +33,7 @@ only thing the operator obtains from the Google account.
 
 ## 0.5 Pre-flight — Polkadot chain-state bootstrap (do this BEFORE step 6)
 
-The on-chain state this repo's deploy depends on — funded attester accounts, **`AttestationAllowance` grants on BOTH People and AssetHub**, sudo proxy delegation, DotNS gateway dispatcher address — is **not provisioned by this repo's SST deploy.** It is owned by the public bootstrap scripts in **`paritytech/individuality-community/tree/main/scripts/initial-setup/`** (vendored read-only at `repos/individuality-community/scripts/initial-setup/` in the internal tree).
+The on-chain state this repo's deploy depends on — funded attester accounts, **`AttestationAllowance` grants on BOTH People and AssetHub**, sudo proxy delegation, DotNS gateway dispatcher address — is **not provisioned by this repo's SST deploy.** It is owned by the public bootstrap scripts in **`paritytech/individuality-community/tree/main/scripts/initial-setup/`**.
 
 If you are bringing up a fresh People / Asset Hub pair (or a new network target), run that README's `start.sh` (or the `ENV=<target> ./12b-setup-attestation-allowances.sh` and `ENV=<target> ./12c-setup-attestation-proxy.sh` minimum) **before** you do Step 6 below. Skipping this is the single most common cause of "the deploy succeeded, the API responds 200, but every registration returns `NoAttestationAllowance`" — see stuck point #31 for the per-chain WSS list and the dual-grant requirement.
 
@@ -797,6 +797,8 @@ config (12 keys) is read from the host environment.
 pnpm sst secret set JWT_AUTH_SECRET             "$(openssl rand -base64 48)" --stage dev
 pnpm sst secret set PROXY_PRIVATE_KEY           "<128-hex>"                  --stage dev
 pnpm sst secret set ATTESTER_PROXY_PRIVATE_KEY  "<128-hex>"                  --stage dev
+# Invitation-pool dedicated signer. Add to infra/secrets.ts and uncomment for dedicated-account deployments.
+# pnpm sst secret set INVITER_POOL_PRIVATE_KEY   "<128-hex>"                  --stage dev
 pnpm sst secret set WEB_PUSH_VAPID_PRIVATE_KEY  "$(bun -e 'console.log(require(\"web-push\").generateVAPIDKeys().privateKey)')" --stage dev
 pnpm sst secret set DEVICE_CHECK_PRIVATE_KEY    "$(cat AuthKey_XXXXX.p8)"    --stage dev
 pnpm sst secret set ADMIN_PASSWORD              "$(openssl rand -base64 24)" --stage dev

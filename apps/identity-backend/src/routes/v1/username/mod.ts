@@ -1,5 +1,4 @@
 import { createOpenAPIHono } from '#root/lib/problem-details.js'
-import { makeProofOfComputeMiddleware } from '#root/middleware/proof-of-compute.middleware.js'
 import { Effect } from 'effect'
 import type { MiddlewareHandler } from 'hono'
 import { except } from 'hono/combine'
@@ -19,7 +18,6 @@ export const makeUsernamesRoute = Effect.fn('v1.make_usernames_route')(function*
   const getUsername = yield* makeGetUsernameRoute()
   const listUsernames = yield* makeListUsernamesRoute()
   const search = yield* makeSearchUsernamesRoute()
-  const proofOfCompute = yield* makeProofOfComputeMiddleware
 
   return createOpenAPIHono()
     .use('/', cors(), etag({ weak: true }))
@@ -39,12 +37,7 @@ export const makeUsernamesRoute = Effect.fn('v1.make_usernames_route')(function*
     )
     .use(
       '/search',
-      authMiddleware,
       rateLimit.search,
-      except(
-        (c) => c.get('jwtSub') !== undefined,
-        proofOfCompute,
-      ),
     )
     .route('/available', checkAvailability)
     .route('/', register)

@@ -1,24 +1,54 @@
-import { Match } from 'effect'
+import { Either, Match, Schema as S } from 'effect'
 
-export type AndroidAttestationRequirement =
-  | { readonly _tag: 'VerifyChain' }
-  | { readonly _tag: 'MissingChain' }
-  | { readonly _tag: 'SkipVerification' }
+const AndroidAttestationRequirementTypeId: unique symbol = Symbol.for(
+  '@identity-backend/hono-auth/AndroidAttestationRequirement',
+)
+type AndroidAttestationRequirementTypeId = typeof AndroidAttestationRequirementTypeId
 
-export interface AndroidAttestationRequirementInput {
-  readonly enforceAuth: boolean
-  readonly chainPresent: boolean
+export class AndroidAttestationRequirementCommand extends S.TaggedClass<AndroidAttestationRequirementCommand>()(
+  'AndroidAttestationRequirementCommand',
+  {
+    enforceAuth: S.Boolean,
+    chainPresent: S.Boolean,
+    requireChainForPlayIntegrity: S.Boolean,
+  },
+) {}
+
+export class VerifyChain extends S.TaggedClass<VerifyChain>()('VerifyChain', {}) {
+  readonly [AndroidAttestationRequirementTypeId] = AndroidAttestationRequirementTypeId
 }
 
-const VerifyChain = { _tag: 'VerifyChain' } as const
-const MissingChain = { _tag: 'MissingChain' } as const
-const SkipVerification = { _tag: 'SkipVerification' } as const
+export class SkipVerification extends S.TaggedClass<SkipVerification>()('SkipVerification', {}) {
+  readonly [AndroidAttestationRequirementTypeId] = AndroidAttestationRequirementTypeId
+}
+
+export const AndroidAttestationRequirementDecision = S.Union(VerifyChain, SkipVerification)
+export type AndroidAttestationRequirementDecision = S.Schema.Type<
+  typeof AndroidAttestationRequirementDecision
+>
+
+export class MissingChainError extends S.TaggedClass<MissingChainError>()('MissingChainError', {}) {}
+
+export const AndroidAttestationRequirementError = S.Union(MissingChainError)
+export type AndroidAttestationRequirementError = S.Schema.Type<typeof AndroidAttestationRequirementError>
+
+const rejectMissingChain = (
+  command: AndroidAttestationRequirementCommand,
+): Either.Either<void, MissingChainError> =>
+  Match.value(command).pipe(
+    Match.when({ chainPresent: true }, () => Either.right(undefined)),
+    Match.when({ requireChainForPlayIntegrity: true }, () => Either.left(new MissingChainError())),
+    Match.when({ enforceAuth: true }, () => Either.left(new MissingChainError())),
+    Match.orElse(() => Either.right(undefined)),
+  )
 
 export const decideAndroidAttestationRequirement = (
-  input: AndroidAttestationRequirementInput,
-): AndroidAttestationRequirement =>
-  Match.value(input).pipe(
-    Match.when({ chainPresent: true }, () => VerifyChain),
-    Match.when({ enforceAuth: true }, () => MissingChain),
-    Match.orElse(() => SkipVerification),
-  )
+  command: AndroidAttestationRequirementCommand,
+): Either.Either<AndroidAttestationRequirementDecision, AndroidAttestationRequirementError> =>
+  Either.gen(function*() {
+    yield* rejectMissingChain(command)
+    return Match.value(command.chainPresent).pipe(
+      Match.when(true, () => new VerifyChain()),
+      Match.orElse(() => new SkipVerification()),
+    )
+  })

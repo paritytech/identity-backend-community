@@ -6,7 +6,7 @@ This document tells an operator who has never used Polkadot tooling exactly what
 
 ## Chain-state pre-requisite (read this first)
 
-The on-chain state this repo's deploy assumes — funded attester accounts, sudo proxy delegation, **`AttestationAllowance` grants on BOTH People and AssetHub**, DotNS gateway dispatcher address, attestation invite pool — is provisioned by the public bootstrap scripts in **`paritytech/individuality-community/tree/main/scripts/initial-setup/`** (vendored read-only at `repos/individuality-community/scripts/initial-setup/`). This repo does **not** own those scripts and the SST deploy does not run them.
+The on-chain state this repo's deploy assumes — funded attester accounts, sudo proxy delegation, **`AttestationAllowance` grants on BOTH People and AssetHub**, DotNS gateway dispatcher address, attestation invite pool — is provisioned by the public bootstrap scripts in **`paritytech/individuality-community/tree/main/scripts/initial-setup/`**. This repo does **not** own those scripts and the SST deploy does not run them.
 
 Before you start Flow 2 below (fund the on-chain account), confirm the community bootstrap is complete for your target network. The two scripts that gate this repo's runtime behavior are:
 
@@ -145,6 +145,7 @@ node generate-key.js "put your twelve-word mnemonic here"
 | ---------------------------- | ------------------------------------------------- | --------------------------------- |
 | `PROXY_PRIVATE_KEY`          | 128 chars (64 bytes), with or without `0x` prefix | `0xd4a9e8...f3c1` (128 hex chars) |
 | `ATTESTER_PROXY_PRIVATE_KEY` | same shape as above                               | same                              |
+| `INVITER_POOL_PRIVATE_KEY`   | same shape as above                               | same                              |
 | `ATTESTER_PUBLIC_KEY`        | 64 chars (32 bytes)                               | `d4a9e8...f3c1` (no `0x` prefix)  |
 | SS58 address (paseo)         | human-readable                                    | `4sejXmR6aHJu7dR4wGqK9jZ2vN3...`  |
 
@@ -155,6 +156,7 @@ The mnemonic itself is **never** an env var. It is the root secret — store it 
 - **`PROXY_PRIVATE_KEY`**: 128-character hex string. May have `0x` prefix or not — the backend's `Redacted` decoder handles both. Paste the full 128 chars exactly.
 - **`ATTESTER_PUBLIC_KEY`**: 64-character hex string, **no** `0x` prefix. This is the 32-byte public key used as the on-chain attester identifier.
 - **`ATTESTER_PROXY_PRIVATE_KEY`**: Same as `PROXY_PRIVATE_KEY` — the expanded 64-byte private key. Only required when `PROXY_DELEGATION_ENABLED=true`; otherwise the backend uses `PROXY_PRIVATE_KEY` for the attester account.
+- **`INVITER_POOL_PRIVATE_KEY`**: Same expanded 64-byte private key shape. A dedicated signing account for the invitation-ticket pool so its refill traffic does not contend with username registration. The account must be registered as a proxy of the attester on-chain (see [`polkadot-attester-onchain.md`](./polkadot-attester-onchain.md)).
 
 ### Verification
 
@@ -298,7 +300,7 @@ After funding and attester registration, the operator has:
 - Paseo faucet: <https://faucet.paseo.org/>
 - Westend2 faucet: <https://faucet.polkadot.io/>
 - Polkadot account generation: <https://wiki.polkadot.network/docs/learn-account-generation>
-- People chain runtime (vendored): `repos/individuality-community/pallets/people-lite/src/lib.rs`
+- People chain runtime (vendored): `paritytech/individuality-community/tree/main/pallets/people-lite/src/lib.rs`
 
 ---
 
@@ -366,7 +368,7 @@ The storage returns `u32` — the number of remaining username reservations the 
 ### Source
 
 - Asset Hub docs: <https://wiki.polkadot.network/docs/learn-assets>
-- dotns-gateway pallet (vendored): `repos/individuality-community/pallets/dotns-gateway/src/lib.rs` — `increase_attestation_allowance` (call index 2), `attestationAllowance` storage item (line 171–173)
+- dotns-gateway pallet (vendored): `paritytech/individuality-community/tree/main/pallets/dotns-gateway/src/lib.rs` — `increase_attestation_allowance` (call index 2), `attestationAllowance` storage item (line 171–173)
 
 ---
 
@@ -486,6 +488,7 @@ The backend reconnects automatically on disconnect. List endpoints in priority o
 | ---------------------------- | ----------------------------------- | ------------------------------------------------------------------- |
 | `PROXY_PRIVATE_KEY`          | 128-char hex (with or without `0x`) | Flow 1 — expanded sr25519 private key                               |
 | `ATTESTER_PROXY_PRIVATE_KEY` | Same as above                       | Flow 1 — same key, only needed when `PROXY_DELEGATION_ENABLED=true` |
+| `INVITER_POOL_PRIVATE_KEY`   | Same as above                       | Dedicated invitation-pool signer (People chain)                     |
 | `ATTESTER_PUBLIC_KEY`        | 64-char hex (no `0x`)               | Flow 1 — 32-byte sr25519 public key                                 |
 | `PEOPLE_RPC_ENDPOINTS`       | JSON array of WSS strings           | Flow 4                                                              |
 | `ASSET_HUB_RPC_ENDPOINTS`    | JSON array of WSS strings           | Flow 3 + Flow 4                                                     |

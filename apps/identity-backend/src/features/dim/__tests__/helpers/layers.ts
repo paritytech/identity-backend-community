@@ -1,15 +1,20 @@
+import { BatchSize } from '#root/batch-backoff/batch-backoff.schema.js'
 import { DB, DBTest } from '#root/db/drizzle.js'
 import { relations } from '#root/db/mod.js'
 import * as schema from '#root/db/schema.js'
 import { ClaimInvitationTicketShell, ClaimTicketConfig } from '#root/features/dim/claim-invitation-ticket.shell.js'
-import { InvitationTicketInviterConfig, TicketPoolShell } from '#root/features/dim/invitation-ticket-pool.shell.js'
+import {
+  InvitationTicketInviterConfig,
+  TicketPoolConfig,
+  TicketPoolShell,
+} from '#root/features/dim/invitation-ticket-pool.shell.js'
 import { InvitationTicketNetworkConfig } from '#root/supervision/invitation-ticket/workers/invitation-ticket.worker.js'
 import { it as effectIt, layer as effectLayer } from '@effect/vitest'
 import { makeFeature } from '@identity-backend/effect-vitest-gherkin'
 import { drizzle, type RemoteCallback } from 'drizzle-orm/pg-proxy'
 import { Duration, Layer } from 'effect'
 import { vi } from 'vitest'
-import { MOCK_INVITER } from './constants.js'
+import { BATCH_SIZE, MOCK_INVITER, POOL_TARGET } from './constants.js'
 import { FakeInviterSignerServiceLayer } from './fakes/inviter-signer.js'
 import { OnChainTicketAPITestLayer } from './fakes/onchain-api.js'
 
@@ -18,6 +23,16 @@ const DimTicketFakesLayer = Layer.mergeAll(
   FakeInviterSignerServiceLayer,
 )
 
+const TestTicketPoolConfigLayer = Layer.succeed(TicketPoolConfig, {
+  interval: Duration.seconds(6),
+  batchSize: BatchSize.make(BATCH_SIZE),
+  poolTargetSize: POOL_TARGET,
+  timeout: Duration.seconds(60),
+  maxRetries: 5,
+  retryBaseDelay: Duration.seconds(1),
+  retryMaxDelay: Duration.minutes(1),
+})
+
 const shellLayer = Layer.provideMerge(
   Layer.mergeAll(
     ClaimInvitationTicketShell.Default,
@@ -25,6 +40,7 @@ const shellLayer = Layer.provideMerge(
       TicketPoolShell.DefaultWithoutDependencies,
       Layer.mergeAll(
         Layer.succeed(InvitationTicketInviterConfig, { inviterAddress: MOCK_INVITER, proxyAs: undefined }),
+        TestTicketPoolConfigLayer,
         DimTicketFakesLayer,
       ),
     ),

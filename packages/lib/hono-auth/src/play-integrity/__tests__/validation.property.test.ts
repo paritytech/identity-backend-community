@@ -111,6 +111,31 @@ describe('validatePlayIntegrityToken — certificate digest', () => {
       return codesOf(result).has('APK_FINGERPRINT_MISMATCH')
     },
   )
+
+  it.prop(
+    '∀RelaxedAllMode_NullDigest_⊥FingerprintError',
+    [PlayIntegrityToken],
+    ([token]) => {
+      const tokenWithDigest: PlayIntegrityToken = { ...token, certificateSha256Digest: null }
+      const result = validate('relaxed_all', tokenWithDigest)
+      return !codesOf(result).has('APK_FINGERPRINT_MISMATCH')
+    },
+  )
+
+  it.prop(
+    '∀RelaxedAllMode_MismatchedDigest_∈FingerprintError',
+    [disjointDigests, PlayIntegrityToken],
+    ([[tokenDigest, expectedDigest], token]) => {
+      const tokenWithDigest: PlayIntegrityToken = { ...token, certificateSha256Digest: [tokenDigest] }
+      const result = validatePlayIntegrityToken({
+        mode: 'relaxed_all',
+        token: tokenWithDigest,
+        expectedCertificateDigests: new Set([expectedDigest]),
+        allowedPackageNames: EXPECTED_PACKAGE_NAMES,
+      })
+      return codesOf(result).has('APK_FINGERPRINT_MISMATCH')
+    },
+  )
 })
 
 describe('validatePlayIntegrityToken — app recognition boundaries', () => {
@@ -306,14 +331,26 @@ describe('validatePlayIntegrityToken — package name boundaries', () => {
   )
 
   it.prop(
-    '∀Mode_NullPackageName_∈PackageError',
-    [PlayIntegrityMode, PlayIntegrityToken],
+    '∀NonRelaxedAllMode_NullPackageName_∈PackageError',
+    [fc.constantFrom('strict' as const, 'relaxed_device' as const), PlayIntegrityToken],
     ([mode, token]) => {
       const result = validate(
         mode,
         withTrustedDigest({ ...token, packageName: null }),
       )
       return codesOf(result).has('PACKAGE_NAME_MISMATCH')
+    },
+  )
+
+  it.prop(
+    '∀RelaxedAllMode_NullPackageName_⊥PackageError',
+    [PlayIntegrityToken],
+    ([token]) => {
+      const result = validate(
+        'relaxed_all',
+        withTrustedDigest({ ...token, packageName: null }),
+      )
+      return !codesOf(result).has('PACKAGE_NAME_MISMATCH')
     },
   )
 })
@@ -396,7 +433,7 @@ describe('validatePlayIntegrityToken — empty token', () => {
         packageName: null,
       }
       const result = validate(mode, emptyToken)
-      const expectedCount = mode === 'relaxed_all' ? 4 : 5
+      const expectedCount = mode === 'relaxed_all' ? 2 : 5
       return isRejected(result) && result.codes.length === expectedCount
     },
   )

@@ -79,8 +79,8 @@ export class TicketPoolConfig extends Context.Reference<TicketPoolConfig>()(
   {
     defaultValue: () => ({
       interval: Duration.seconds(6),
-      batchSize: BatchSize.make(10),
-      poolTargetSize: 50,
+      batchSize: BatchSize.make(100),
+      poolTargetSize: 10_000,
       timeout: Duration.seconds(60),
       maxRetries: 5,
       retryBaseDelay: Duration.seconds(1),
@@ -279,7 +279,7 @@ export class TicketPoolShell extends Context.Tag('@app/TicketPoolShell')<
   static readonly DefaultWithoutDependencies = Layer.scoped(TicketPoolShell, make)
   static readonly Default = Layer.suspend(() => TicketPoolShell.DefaultWithoutDependencies).pipe(
     Layer.provideMerge(OnChainTicketAPI.Default),
-    Layer.provideMerge(InviterSignerService.Default),
+    Layer.provideMerge(Layer.fresh(InviterSignerService.Default)),
   )
 }
 

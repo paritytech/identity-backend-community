@@ -215,4 +215,37 @@ feature('Voucher Redemption')
         ),
       ),
     )
+
+    scenario(
+      'A voucher presented with an Android package header still redeems',
+      scope.pipe(
+        Given('a registered voucher and a client declaring its Android package')(
+          'voucher',
+          () =>
+            Effect.gen(function*() {
+              const voucher = makeVoucher()
+              yield* seedVoucher(voucher.secretHash)
+              return voucher
+            }),
+        ),
+        When('the holder presents the voucher alongside Auth-Android-Package')(
+          'res',
+          ({ voucher }) => presentVoucher({ secret: voucher.secretB64, androidPackage: 'io.parity.polkadotwallet' }),
+        ),
+        Then('the holder receives an access token')(
+          ({ res }) =>
+            Effect.gen(function*() {
+              expect(res.status).toBe(200)
+              const json = yield* responseJson(res)
+              expect(json).toEqual(expect.schemaMatching(TokenResponse))
+            }),
+        ),
+        And('the voucher is marked redeemed')(
+          ({ voucher }) =>
+            Effect.gen(function*() {
+              expect(yield* redeemedAt(voucher.secretHash)).not.toBeNull()
+            }),
+        ),
+      ),
+    )
   })

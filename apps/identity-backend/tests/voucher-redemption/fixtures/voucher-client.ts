@@ -51,7 +51,11 @@ export const redeemedAt = (secretHash: string) =>
 
 /** Presents a voucher to `POST /token`. Generates a fresh keypair + challenge
  * per call; `tamperProof` swaps in a random (invalid) signature. */
-export const presentVoucher = (params: { readonly secret: string; readonly tamperProof?: boolean }) =>
+export const presentVoucher = (params: {
+  readonly secret: string
+  readonly tamperProof?: boolean
+  readonly androidPackage?: string
+}) =>
   Effect.gen(function*() {
     const authService = yield* AuthService
     const keypair = yield* sr25519.generateKeypair()
@@ -75,6 +79,9 @@ export const presentVoucher = (params: { readonly secret: string; readonly tampe
           'Auth-Challenge': encodeBase64(challenge),
           'Auth-Attestation-Type': 'voucher',
           'Auth-Voucher-Secret': params.secret,
+          ...(params.androidPackage !== undefined
+            ? { 'Auth-Android-Package': params.androidPackage }
+            : {}),
         },
         json: {},
       })

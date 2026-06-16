@@ -396,6 +396,33 @@ subkey generate --scheme sr25519
 
 ---
 
+### `INVITER_POOL_PRIVATE_KEY`
+
+**What it is:** sr25519 private key for a **dedicated invitation-ticket pool signing account**. The pool daemon submits invitation-ticket extrinsics on its own account so high pool-refill traffic does not contend with username registration on the shared submission permit.
+
+**Format:** identical to `ATTESTER_PROXY_PRIVATE_KEY` — 128-hex-character (64-byte) expanded sr25519 private key, with or without `0x` prefix. The Config layer strips any `0x` prefix.
+
+**How to generate:**
+
+```bash
+# Use the repo's key generation script (same as PROXY_PRIVATE_KEY / ATTESTER_PROXY_PRIVATE_KEY):
+# 1. Edit apps/identity-backend/scripts/private-key.ts — replace "put the mnemonic here"
+#    with the 12/24-word mnemonic for the dedicated pool account
+# 2. Run with Bun from the repo root:
+bun apps/identity-backend/scripts/private-key.ts
+# 3. Use the "Expanded Private Key (hex)" output as INVITER_POOL_PRIVATE_KEY.
+#    This is the 128-char (64-byte) expanded sr25519 key.
+```
+
+**On-chain prerequisite:** like `ATTESTER_PROXY_PRIVATE_KEY`, this account is a **proxy submitter for the attester authority**. Its proxy delegation must be registered on-chain before it can submit; the community bootstrap script (`12c-setup-attestation-proxy.sh`) is the source of truth for that step, and it must be funded with existential deposit + transaction fees.
+
+**Caveats:**
+
+- Optional. Unset = fall back to the attester proxy signer (the prior behaviour).
+- Only raise `INVITATION_TICKET_POOL_TARGET` / `INVITATION_TICKET_BATCH_SIZE` above their defaults in environments where this key is set; otherwise the larger pool contends with username registration.
+
+---
+
 ### `ATTESTER_PUBLIC_KEY`
 
 **What it is:** 32-byte public key (64 hex characters) corresponding to `ATTESTER_PROXY_PRIVATE_KEY`, used as the attester identity on-chain.
@@ -767,6 +794,7 @@ A value belongs in **secrets** only if leaking it would harm you (private keys, 
 | `JWT_AUTH_SECRET`            | Base64 bytes                            | Base64                     |
 | `PROXY_PRIVATE_KEY`          | 128-char hex                            | `0x` prefix stripped       |
 | `ATTESTER_PROXY_PRIVATE_KEY` | 128-char hex                            | `0x` prefix stripped       |
+| `INVITER_POOL_PRIVATE_KEY`   | 128-char hex                            | `0x` prefix stripped       |
 | `DEVICE_CHECK_PRIVATE_KEY`   | PKCS#8 PEM text (verbatim)              | Plain (newlines preserved) |
 | `APN_PRIVATE_KEY`            | Raw `.p8` bytes                         | Base64 (of file bytes)     |
 | `TURN_SECRET`                | Base64 bytes                            | Base64                     |

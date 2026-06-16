@@ -1,32 +1,25 @@
 import { describe, it } from '@effect/vitest'
-import { FastCheck as fc } from 'effect'
-import { decideAndroidAttestationRequirement } from '../attestation-requirement.workflow.js'
+import { Either } from 'effect'
+import {
+  AndroidAttestationRequirementCommand,
+  decideAndroidAttestationRequirement,
+} from '../attestation-requirement.workflow.js'
 
 describe('decideAndroidAttestationRequirement', () => {
   it.prop(
-    '∀EnforceAuth_ChainPresent_=VerifyChain',
-    [fc.boolean()],
-    ([enforceAuth]) => decideAndroidAttestationRequirement({ enforceAuth, chainPresent: true })._tag === 'VerifyChain',
-  )
-
-  it.prop(
-    '∀EnforceAuth_ChainAbsent_→FlagDecidesRejectVsSkip',
-    [fc.boolean()],
-    ([enforceAuth]) =>
-      decideAndroidAttestationRequirement({ enforceAuth, chainPresent: false })._tag ===
-        (enforceAuth ? 'MissingChain' : 'SkipVerification'),
-  )
-
-  it.prop(
-    '∀EnforceAuthChain_FullMatrix_=SpecOutcome',
-    [fc.boolean(), fc.boolean()],
-    ([enforceAuth, chainPresent]) => {
-      const expected = chainPresent
-        ? 'VerifyChain'
-        : enforceAuth
-        ? 'MissingChain'
-        : 'SkipVerification'
-      return decideAndroidAttestationRequirement({ enforceAuth, chainPresent })._tag === expected
+    '∀Command_FullMatrix_=SpecOutcome',
+    [AndroidAttestationRequirementCommand],
+    ([command]) => {
+      const { chainPresent, requireChainForPlayIntegrity, enforceAuth } = command
+      const expectError = !chainPresent && (requireChainForPlayIntegrity || enforceAuth)
+      return Either.match(decideAndroidAttestationRequirement(command), {
+        onLeft: (error) =>
+          expectError &&
+          error._tag === 'MissingChainError',
+        onRight: (decision) =>
+          !expectError &&
+          decision._tag === (chainPresent ? 'VerifyChain' : 'SkipVerification'),
+      })
     },
   )
 })

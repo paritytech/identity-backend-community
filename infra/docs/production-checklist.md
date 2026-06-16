@@ -280,7 +280,7 @@ STAGE=<stage>
 TASK_ARN=$(aws ecs list-tasks --cluster identity-backend-$STAGE --desired-status RUNNING --query 'taskArns[0]' --output text)
 aws ecs execute-command --cluster identity-backend-$STAGE --task $TASK_ARN --container app-identity --interactive --command "/bin/sh"
 # Inside the task:
-env | grep -E '^(AUTH_ENABLED|ENFORCE_AUTH|DEVICE_CHECK_IOS_ENABLED|JWT_AUTH_ENFORCED|POC_ENABLED|INVITATION_TICKET_DAEMON_ENABLED|FINALIZED_BLOCK_DAEMON_ENABLED|APN_PRODUCTION|EXPOSE_BUILD_INFO|ADMIN_ROUTE_ENABLED|DEBUG_HEAPDUMP_ENABLED|DEBUG_SQL_ENABLED|DEBUG_VOUCHER_ENABLED|DOTNS_GATEWAY_ENABLED|PROXY_DELEGATION_ENABLED|WEB_PUSH_ENABLED|REGISTRATION_QUEUE_ENABLED|PUSH_SUBSCRIPTIONS_INDEXER_ENABLED|USERNAME_INDEXER_ENABLED|PLAY_INTEGRITY_MODE|ANDROID_ATTESTATION_ROOT_PEMS|ANDROID_ATTESTATION_CRL_URL|ANDROID_ATTESTATION_TOKEN_TTL_SECONDS|CHALLENGE_TTL_SECONDS|JWT_TTL|REFRESH_TOKEN_DURATION_DAYS|REQUEST_SAMPLE_RATE|SENTRY_TRACE_SAMPLE_RATE|PEOPLE_CHAIN_FINALIZATION_TIMEOUT|TX_INCLUSION_TIMEOUT|DOTNS_RESERVE_BATCH_SIZE|DOTNS_INTAKE_FRESHNESS_MAX_AGE_SECONDS|DOTNS_SIGNED_AT_SAFETY_MARGIN_SECONDS)='
+env | grep -E '^(AUTH_ENABLED|ENFORCE_AUTH|DEVICE_CHECK_IOS_ENABLED|JWT_AUTH_ENFORCED|POC_ENABLED|INVITATION_TICKET_DAEMON_ENABLED|INVITATION_TICKET_POOL_TARGET|INVITATION_TICKET_BATCH_SIZE|FINALIZED_BLOCK_DAEMON_ENABLED|APN_PRODUCTION|EXPOSE_BUILD_INFO|ADMIN_ROUTE_ENABLED|DEBUG_HEAPDUMP_ENABLED|DEBUG_SQL_ENABLED|DEBUG_VOUCHER_ENABLED|DOTNS_GATEWAY_ENABLED|PROXY_DELEGATION_ENABLED|WEB_PUSH_ENABLED|REGISTRATION_QUEUE_ENABLED|PUSH_SUBSCRIPTIONS_INDEXER_ENABLED|USERNAME_INDEXER_ENABLED|PLAY_INTEGRITY_MODE|ANDROID_ATTESTATION_ROOT_PEMS|ANDROID_ATTESTATION_CRL_URL|ANDROID_ATTESTATION_TOKEN_TTL_SECONDS|CHALLENGE_TTL_SECONDS|JWT_TTL|REFRESH_TOKEN_DURATION_DAYS|REQUEST_SAMPLE_RATE|SENTRY_TRACE_SAMPLE_RATE|PEOPLE_CHAIN_FINALIZATION_TIMEOUT|TX_INCLUSION_TIMEOUT|DOTNS_RESERVE_BATCH_SIZE|DOTNS_INTAKE_FRESHNESS_MAX_AGE_SECONDS|DOTNS_SIGNED_AT_SAFETY_MARGIN_SECONDS)='
 ```
 
 Cross-check each value against the tables above. Any drift is a hard
@@ -470,11 +470,12 @@ Verify via Polkadot.js Apps → Chain state → `dotnsGateway` →
 
 ### 8.3 On-chain accounts that must be funded
 
-| Account                                                                         | Network      | Required balance              | Why                                                |
-| ------------------------------------------------------------------------------- | ------------ | ----------------------------- | -------------------------------------------------- |
-| The proxy account (the public key behind `PROXY_PRIVATE_KEY`)                   | People chain | existential deposit + tx fees | submits every username registration                |
-| The attester proxy account (the public key behind `ATTESTER_PROXY_PRIVATE_KEY`) | People chain | existential deposit + tx fees | only when `PROXY_DELEGATION_ENABLED=true`          |
-| The attester public key's account                                               | Asset Hub    | existential deposit + tx fees | the account that calls `dotnsGateway.reserve_name` |
+| Account                                                                                  | Network      | Required balance              | Why                                                                                                            |
+| ---------------------------------------------------------------------------------------- | ------------ | ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| The proxy account (the public key behind `PROXY_PRIVATE_KEY`)                            | People chain | existential deposit + tx fees | submits every username registration                                                                            |
+| The attester proxy account (the public key behind `ATTESTER_PROXY_PRIVATE_KEY`)          | People chain | existential deposit + tx fees | only when `PROXY_DELEGATION_ENABLED=true`                                                                      |
+| The dedicated invitation-pool account (the public key behind `INVITER_POOL_PRIVATE_KEY`) | People chain | existential deposit + tx fees | fund the dedicated invitation-pool account to avoid contending with username registration on the shared signer |
+| The attester public key's account                                                        | Asset Hub    | existential deposit + tx fees | the account that calls `dotnsGateway.reserve_name`                                                             |
 
 See [`polkadot-attester-onchain.md`](./polkadot-attester-onchain.md)
 for the per-network faucet URLs (paseo, westend2) and the funding
@@ -565,34 +566,36 @@ not have to reverse-engineer the rollback from the source.
 
 ## Appendix A — Quick reference: every flag and its default
 
-| Flag                                    |       Default       |       Production       | Reason                                                |
-| --------------------------------------- | :-----------------: | :--------------------: | ----------------------------------------------------- |
-| `AUTH_ENABLED`                          |        false        |        **true**        | accept only authenticated requests                    |
-| `ENFORCE_AUTH`                          |        false        |        **true**        | App Attest on every iOS request                       |
-| `DEVICE_CHECK_IOS_ENABLED`              |        false        |        **true**        | DeviceCheck on iOS                                    |
-| `JWT_AUTH_ENFORCED`                     |        false        |        **true**        | JWT required on dim/invitation/notify/turn/usernames  |
-| `POC_ENABLED`                           |        false        | **true on shared-nat** | defends public reads against CGNAT                    |
-| `APN_PRODUCTION`                        |        false        |        **true**        | APNs production endpoint                              |
-| `EXPOSE_BUILD_INFO`                     |        false        |          true          | on-call can read `/api/v1/version`                    |
-| `INVITATION_TICKET_DAEMON_ENABLED`      |        true         |          true          | daemon                                                |
-| `FINALIZED_BLOCK_DAEMON_ENABLED`        |        true         |          true          | daemon                                                |
-| `ADMIN_ROUTE_ENABLED`                   |        false        |       **false**        | never on in prod                                      |
-| `DEBUG_HEAPDUMP_ENABLED`                |        false        |       **false**        | "NEVER enable in production" (config.ts)              |
-| `DEBUG_SQL_ENABLED`                     |        false        |       **false**        | leaks DB                                              |
-| `DEBUG_VOUCHER_ENABLED`                 |        false        |       **false**        | "NEVER enable in production" (config.ts)              |
-| `DOTNS_GATEWAY_ENABLED`                 |        false        |        per-env         | requires on-chain allowance grant                     |
-| `PROXY_DELEGATION_ENABLED`              |        false        |        per-env         | requires funded proxy + smoke test                    |
-| `WEB_PUSH_ENABLED`                      |        false        |        per-env         | requires VAPID keypair + subject                      |
-| `REGISTRATION_QUEUE_ENABLED`            |        false        |        per-env         | requires daemon to be observed in staging             |
-| `PUSH_SUBSCRIPTIONS_INDEXER_ENABLED`    |        false        |        per-env         | requires daemon to be observed in staging             |
-| `USERNAME_INDEXER_ENABLED`              |        false        |        per-env         | requires daemon to be observed in staging             |
-| `PLAY_INTEGRITY_MODE`                   |     `'strict'`      |       `'strict'`       | relaxed modes accept sideloaded / debug APKs          |
-| `ANDROID_ATTESTATION_ROOT_PEMS`         | `GOOGLE_ROOT_CERTS` |  **DO NOT override**   | test CA = every Android request passes                |
-| `ANDROID_ATTESTATION_CRL_URL`           |     Google URL      |  **DO NOT override**   | non-Google = revoked devices still pass               |
-| `ANDROID_ATTESTATION_TOKEN_TTL_SECONDS` |         60          |           60           | short-lived token; do not raise                       |
-| `CHALLENGE_TTL_SECONDS`                 |         300         |          300           | challenge replay window; do not raise                 |
-| `JWT_TTL`                               |    `15 minutes`     |      `15 minutes`      | access-token TTL; hard-capped at 24h by config decode |
-| `REFRESH_TOKEN_DURATION_DAYS`           |         30          |           30           | refresh-token TTL; do not raise                       |
+| Flag                                    |       Default       |       Production       | Reason                                                                             |
+| --------------------------------------- | :-----------------: | :--------------------: | ---------------------------------------------------------------------------------- |
+| `AUTH_ENABLED`                          |        false        |        **true**        | accept only authenticated requests                                                 |
+| `ENFORCE_AUTH`                          |        false        |        **true**        | App Attest on every iOS request                                                    |
+| `DEVICE_CHECK_IOS_ENABLED`              |        false        |        **true**        | DeviceCheck on iOS                                                                 |
+| `JWT_AUTH_ENFORCED`                     |        false        |        **true**        | JWT required on dim/invitation/notify/turn/usernames                               |
+| `POC_ENABLED`                           |        false        | **true on shared-nat** | defends public reads against CGNAT                                                 |
+| `APN_PRODUCTION`                        |        false        |        **true**        | APNs production endpoint                                                           |
+| `EXPOSE_BUILD_INFO`                     |        false        |          true          | on-call can read `/api/v1/version`                                                 |
+| `INVITATION_TICKET_DAEMON_ENABLED`      |        true         |          true          | daemon                                                                             |
+| `INVITATION_TICKET_POOL_TARGET`         |        10000        |        per-env         | pool refill target; requires a dedicated pool account (`INVITER_POOL_PRIVATE_KEY`) |
+| `INVITATION_TICKET_BATCH_SIZE`          |         100         |        per-env         | tickets per batch; the dynamic policy shrinks it on resource exhaustion            |
+| `FINALIZED_BLOCK_DAEMON_ENABLED`        |        true         |          true          | daemon                                                                             |
+| `ADMIN_ROUTE_ENABLED`                   |        false        |       **false**        | never on in prod                                                                   |
+| `DEBUG_HEAPDUMP_ENABLED`                |        false        |       **false**        | "NEVER enable in production" (config.ts)                                           |
+| `DEBUG_SQL_ENABLED`                     |        false        |       **false**        | leaks DB                                                                           |
+| `DEBUG_VOUCHER_ENABLED`                 |        false        |       **false**        | "NEVER enable in production" (config.ts)                                           |
+| `DOTNS_GATEWAY_ENABLED`                 |        false        |        per-env         | requires on-chain allowance grant                                                  |
+| `PROXY_DELEGATION_ENABLED`              |        false        |        per-env         | requires funded proxy + smoke test                                                 |
+| `WEB_PUSH_ENABLED`                      |        false        |        per-env         | requires VAPID keypair + subject                                                   |
+| `REGISTRATION_QUEUE_ENABLED`            |        false        |        per-env         | requires daemon to be observed in staging                                          |
+| `PUSH_SUBSCRIPTIONS_INDEXER_ENABLED`    |        false        |        per-env         | requires daemon to be observed in staging                                          |
+| `USERNAME_INDEXER_ENABLED`              |        false        |        per-env         | requires daemon to be observed in staging                                          |
+| `PLAY_INTEGRITY_MODE`                   |     `'strict'`      |       `'strict'`       | relaxed modes accept sideloaded / debug APKs                                       |
+| `ANDROID_ATTESTATION_ROOT_PEMS`         | `GOOGLE_ROOT_CERTS` |  **DO NOT override**   | test CA = every Android request passes                                             |
+| `ANDROID_ATTESTATION_CRL_URL`           |     Google URL      |  **DO NOT override**   | non-Google = revoked devices still pass                                            |
+| `ANDROID_ATTESTATION_TOKEN_TTL_SECONDS` |         60          |           60           | short-lived token; do not raise                                                    |
+| `CHALLENGE_TTL_SECONDS`                 |         300         |          300           | challenge replay window; do not raise                                              |
+| `JWT_TTL`                               |    `15 minutes`     |      `15 minutes`      | access-token TTL; hard-capped at 24h by config decode                              |
+| `REFRESH_TOKEN_DURATION_DAYS`           |         30          |           30           | refresh-token TTL; do not raise                                                    |
 
 ---
 

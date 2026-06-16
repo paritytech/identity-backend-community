@@ -87,7 +87,7 @@ export const AttestationDispatchError = z
   .object({
     _tag: z.enum(['MissingAttestationTypeHeader', 'UnknownAttestationType']).openapi({
       description:
-        'MissingAttestationTypeHeader: an Android request omitted Auth-Attestation-Type. UnknownAttestationType: the value was neither play-integrity nor key-attestation.',
+        'MissingAttestationTypeHeader: an Android request omitted Auth-Attestation-Type. UnknownAttestationType: the value was not one of play-integrity, key-attestation, voucher.',
     }),
     error: z.string().openapi({
       description: 'Human-readable explanation of the dispatch failure.',

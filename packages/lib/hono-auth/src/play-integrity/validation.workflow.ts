@@ -29,6 +29,7 @@ interface ModePolicy {
   readonly acceptDeviceRecognition: ReadonlySet<DeviceRecognitionVerdict>
   readonly acceptEmptyDeviceRecognition: boolean
   readonly acceptAppLicensing: ReadonlySet<AppLicensingVerdict | null>
+  readonly acceptMissingAppIntegrity: boolean
 }
 
 const STRICT_POLICY: ModePolicy = {
@@ -39,6 +40,7 @@ const STRICT_POLICY: ModePolicy = {
   ]),
   acceptEmptyDeviceRecognition: false,
   acceptAppLicensing: new Set<AppLicensingVerdict | null>(['LICENSED' as const]),
+  acceptMissingAppIntegrity: false,
 }
 
 const RELAXED_DEVICE_POLICY: ModePolicy = {
@@ -50,6 +52,7 @@ const RELAXED_DEVICE_POLICY: ModePolicy = {
   ]),
   acceptEmptyDeviceRecognition: false,
   acceptAppLicensing: new Set<AppLicensingVerdict | null>(['LICENSED' as const]),
+  acceptMissingAppIntegrity: false,
 }
 
 const RELAXED_ALL_POLICY: ModePolicy = {
@@ -70,6 +73,7 @@ const RELAXED_ALL_POLICY: ModePolicy = {
     'UNLICENSED' as const,
     'UNEVALUATED' as const,
   ]),
+  acceptMissingAppIntegrity: true,
 }
 
 const MODE_POLICY: Readonly<Record<PlayIntegrityMode, ModePolicy>> = {
@@ -79,6 +83,18 @@ const MODE_POLICY: Readonly<Record<PlayIntegrityMode, ModePolicy>> = {
 }
 
 const DEVICE_INTEGRITY_FAILED = 'DEVICE_INTEGRITY_FAILED' as const satisfies PlayIntegrityErrorCode
+const APK_FINGERPRINT_MISMATCH = 'APK_FINGERPRINT_MISMATCH' as const satisfies PlayIntegrityErrorCode
+const PACKAGE_NAME_MISMATCH = 'PACKAGE_NAME_MISMATCH' as const satisfies PlayIntegrityErrorCode
+
+const missingFieldResult = (
+  acceptMissing: boolean,
+  code: PlayIntegrityErrorCode,
+): Option.Option<PlayIntegrityErrorCode> =>
+  Match.value(acceptMissing).pipe(
+    Match.when(true, () => Option.none()),
+    Match.when(false, () => Option.some(code)),
+    Match.exhaustive,
+  )
 
 const checkAppRecognition = (
   verdict: AppRecognitionVerdict | null,
@@ -134,6 +150,7 @@ const checkAppLicensing = (
 const checkCertificateDigest = (
   tokenDigests: ReadonlyArray<string> | null,
   expectedDigests: ReadonlySet<string>,
+  acceptMissing: boolean,
 ): Option.Option<PlayIntegrityErrorCode> =>
   Match.value(tokenDigests).pipe(
     Match.when(
@@ -141,23 +158,24 @@ const checkCertificateDigest = (
       (digests) =>
         Match.value(digests.some((d) => expectedDigests.has(d))).pipe(
           Match.when(true, () => Option.none()),
-          Match.when(false, () => Option.some('APK_FINGERPRINT_MISMATCH' as const satisfies PlayIntegrityErrorCode)),
+          Match.when(false, () => Option.some(APK_FINGERPRINT_MISMATCH)),
           Match.exhaustive,
         ),
     ),
-    Match.orElse(() => Option.some('APK_FINGERPRINT_MISMATCH' as const satisfies PlayIntegrityErrorCode)),
+    Match.orElse(() => missingFieldResult(acceptMissing, APK_FINGERPRINT_MISMATCH)),
   )
 
 const checkPackageName = (
   packageName: string | null,
   allowedNames: ReadonlySet<string>,
+  acceptMissing: boolean,
 ): Option.Option<PlayIntegrityErrorCode> =>
   Match.value(packageName).pipe(
-    Match.when(null, () => Option.some('PACKAGE_NAME_MISMATCH' as const satisfies PlayIntegrityErrorCode)),
+    Match.when(null, () => missingFieldResult(acceptMissing, PACKAGE_NAME_MISMATCH)),
     Match.when(Match.string, (name) =>
       Match.value(allowedNames.has(name)).pipe(
         Match.when(true, () => Option.none()),
-        Match.when(false, () => Option.some('PACKAGE_NAME_MISMATCH' as const satisfies PlayIntegrityErrorCode)),
+        Match.when(false, () => Option.some(PACKAGE_NAME_MISMATCH)),
         Match.exhaustive,
       )),
     Match.exhaustive,
@@ -180,8 +198,12 @@ export const validatePlayIntegrityToken = (
       policy.acceptEmptyDeviceRecognition,
     ),
     checkAppLicensing(params.token.appLicensingVerdict, policy.acceptAppLicensing),
-    checkCertificateDigest(params.token.certificateSha256Digest, params.expectedCertificateDigests),
-    checkPackageName(params.token.packageName, params.allowedPackageNames),
+    checkCertificateDigest(
+      params.token.certificateSha256Digest,
+      params.expectedCertificateDigests,
+      policy.acceptMissingAppIntegrity,
+    ),
+    checkPackageName(params.token.packageName, params.allowedPackageNames, policy.acceptMissingAppIntegrity),
   )
 
   return Match.value(errors.length === 0).pipe(

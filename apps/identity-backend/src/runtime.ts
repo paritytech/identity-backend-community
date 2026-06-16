@@ -6,7 +6,7 @@ import { AppAttestService, AppAttestServiceConfig, AuthService } from '@identity
 import { sr25519 } from '@identity-backend/crypto'
 import { DeviceCheckIOSEnvironment, layerDeviceCheckIOSService } from '@identity-backend/hono-auth/device-check'
 import { ss58Address } from '@polkadot-labs/hdkd-helpers'
-import { Config, Duration, Effect, Layer, pipe, PubSub, Random, Redacted } from 'effect'
+import { Config, Duration, Effect, Layer, Option, pipe, PubSub, Random, Redacted } from 'effect'
 
 import { LeaderElectionDbLive } from '#root/leader-election/mod.js'
 import * as config from './config.js'
@@ -18,7 +18,11 @@ import {
 } from './features/dim/dim-ticket-blockchain.service.js'
 import { DimTicketDaemonShell } from './features/dim/dim-ticket-daemon.shell.js'
 import { DimTicketConfig, DimTicketShell } from './features/dim/dim-ticket.shell.js'
-import { InvitationTicketInviterConfig, TicketPoolShell } from './features/dim/invitation-ticket-pool.shell.js'
+import {
+  InvitationTicketInviterConfig,
+  TicketPoolConfig,
+  TicketPoolShell,
+} from './features/dim/invitation-ticket-pool.shell.js'
 import { InviterSignerConfig, InviterSignerService } from './features/dim/inviter-signer.service.js'
 import { OnChainTicketAPI } from './features/dim/onchain-ticket.adapter.js'
 import { SubscriptionCrudShell } from './features/subscriptions/crud.shell.js'
@@ -115,6 +119,24 @@ const applicationServicesLive = Layer.unwrapEffect(
       ? ss58Address(attesterPublicKey)
       : ss58Address(proxyKeypair.publicKey)
 
+    const inviterPoolPrivateKey = yield* config.INVITER_POOL_PRIVATE_KEY
+    const inviterPoolSignerKeypair = Option.isSome(inviterPoolPrivateKey)
+      ? yield* sr25519.fromPrivateKey({ privateKey: inviterPoolPrivateKey.value })
+      : attesterSignerKeypair
+
+    yield* Option.isSome(inviterPoolPrivateKey)
+      ? Effect.logInfo('Invitation ticket pool using dedicated signing account', {
+        'invitation_ticket.pool.signer': ss58Address(inviterPoolSignerKeypair.publicKey),
+      })
+      : Effect.logWarning(
+        'INVITER_POOL_PRIVATE_KEY is unset: invitation ticket pool is sharing the attester proxy ' +
+          'signer and will contend with username registration on the shared submission permit',
+        { 'invitation_ticket.pool.signer': ss58Address(inviterPoolSignerKeypair.publicKey) },
+      )
+
+    const invitationPoolTargetSize = yield* config.INVITATION_TICKET_POOL_TARGET
+    const invitationPoolBatchSize = yield* config.INVITATION_TICKET_BATCH_SIZE
+
     const dotnsLayer = Layer.provideMerge(
       DotnsGatewayAPI.Default,
       Layer.provideMerge(
@@ -192,9 +214,9 @@ const applicationServicesLive = Layer.unwrapEffect(
             Layer.provide(
               DimTicketDaemonShell.DefaultWithoutDependencies,
               Layer.provide(
-                InviterSignerService.Default,
+                Layer.fresh(InviterSignerService.Default),
                 Layer.succeed(InviterSignerConfig, {
-                  keypair: attesterSignerKeypair,
+                  keypair: inviterPoolSignerKeypair,
                 }),
               ),
             ),
@@ -211,8 +233,17 @@ const applicationServicesLive = Layer.unwrapEffect(
                   inviterAddress: dimInviterAddress,
                   proxyAs: dimSigningProxyAs,
                 }),
+                Layer.succeed(TicketPoolConfig, {
+                  interval: Duration.seconds(6),
+                  batchSize: invitationPoolBatchSize,
+                  poolTargetSize: invitationPoolTargetSize,
+                  timeout: Duration.seconds(60),
+                  maxRetries: 5,
+                  retryBaseDelay: Duration.seconds(1),
+                  retryMaxDelay: Duration.minutes(1),
+                }),
                 Layer.succeed(InviterSignerConfig, {
-                  keypair: attesterSignerKeypair,
+                  keypair: inviterPoolSignerKeypair,
                 }),
               ),
             ),

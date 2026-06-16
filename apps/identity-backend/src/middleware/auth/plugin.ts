@@ -2,6 +2,7 @@ import { DB } from '#root/db/mod.js'
 import { ChallengeServiceLive } from '#root/infrastructure/adapters/challenge.service.js'
 import { AppAttestationRepositoryLive } from '#root/infrastructure/adapters/repositories/app-attest.repository.js'
 import { AndroidAttestationCrlService } from '#root/infrastructure/android-attestation-crl.service.js'
+import { buildProblemDetail } from '#root/lib/problem-details.js'
 import {
   AttestationChallenge,
   GRAPHENEOS_VERIFIED_BOOT_KEYS,
@@ -21,6 +22,7 @@ import {
   makeAndroidAttestationMiddleware,
   makeAuthMiddleware,
 } from '@identity-backend/hono-auth/auth'
+import type { AuthMiddlewareErrorFormatter } from '@identity-backend/hono-auth/auth'
 import {
   layerPlayIntegrityMiddleware,
   makePlayIntegrityMiddleware,
@@ -28,7 +30,7 @@ import {
 } from '@identity-backend/hono-auth/play-integrity'
 import { PlayIntegrityServiceConfig } from '@identity-backend/play-integrity'
 import { decodeHex, encodeBase64Url } from '@std/encoding'
-import { Config, Context, Effect, Layer, pipe, Schema as S } from 'effect'
+import { Config, Context, Effect, Layer, Match, pipe, Schema as S } from 'effect'
 import { createMiddleware } from 'hono/factory'
 
 const toDigestSet = (
@@ -46,6 +48,75 @@ export class AuthPluginConfig extends Context.Tag('app/AuthPluginConfig')<
     enabled: boolean
   }
 >() {}
+
+export const formatAuthError: AuthMiddlewareErrorFormatter = (error) =>
+  Match.value(error).pipe(
+    Match.tag('MissingAuthHeaders', () => ({
+      body: buildProblemDetail({
+        slug: 'unauthorized',
+        title: 'Missing Authentication Headers',
+        detail:
+          'Missing one of [Auth-iOS-Package, Auth-Android-Package, Auth-Attestation-Token, Auth-Attestation-Type] headers',
+        status: 401,
+      }),
+      status: 401 as const,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })),
+    Match.tag('ConflictingPlatformHeaders', () => ({
+      body: buildProblemDetail({
+        slug: 'unauthorized',
+        title: 'Conflicting Platform Headers',
+        detail: "Only one of ['Auth-iOS-Package', 'Auth-Android-Package'] is allowed",
+        status: 401,
+      }),
+      status: 401 as const,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })),
+    Match.tag('MissingAndroidAttestationChain', () => ({
+      body: buildProblemDetail({
+        slug: 'unauthorized',
+        title: 'Missing Android Attestation Chain',
+        detail:
+          'The request requires an Android key-attestation certificate chain in the "attestationChain" body field, but none was provided.',
+        status: 401,
+      }),
+      status: 401 as const,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })),
+    Match.tag('MissingAttestationTypeHeader', () => ({
+      body: buildProblemDetail({
+        slug: 'missing-request-header',
+        title: 'Missing Attestation Type Header',
+        detail:
+          'Missing Auth-Attestation-Type header. Android requests must declare play-integrity, key-attestation, or voucher.',
+        status: 400,
+      }),
+      status: 400 as const,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })),
+    Match.tag('UnknownAttestationType', () => ({
+      body: buildProblemDetail({
+        slug: 'invalid-request-header-format',
+        title: 'Unknown Attestation Type',
+        detail:
+          'Unknown Auth-Attestation-Type header value. Expected one of: play-integrity, key-attestation, voucher.',
+        status: 400,
+      }),
+      status: 400 as const,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })),
+    Match.tag('IncompleteAssertion', ({ missing }) => ({
+      body: buildProblemDetail({
+        slug: 'unauthorized',
+        title: 'Incomplete App Attest Assertion',
+        detail: `Missing required App Attest headers: ${missing.join(', ')}`,
+        status: 401,
+      }),
+      status: 401 as const,
+      headers: { 'Content-Type': 'application/problem+json' },
+    })),
+    Match.exhaustive,
+  )
 
 export const makeAuthPluginWithoutDependencies = Effect.gen(function*() {
   const config = yield* AuthPluginConfig
@@ -113,11 +184,15 @@ export const makeAuthPluginWithoutDependencies = Effect.gen(function*() {
   const layerAuthMiddlewareConfig = Layer.effect(
     AuthMiddlewareConfig,
     Effect.gen(function*() {
-      const { ENFORCE_AUTH } = yield* Effect.promise(() => import('#root/config.js'))
-      const enforceAuth = yield* ENFORCE_AUTH
+      const { ENFORCE_AUTH, REQUIRE_CHAIN_FOR_PLAY_INTEGRITY } = yield* Effect.promise(() => import('#root/config.js'))
+      const [enforceAuth, requireChainForPlayIntegrity] = yield* Effect.all([
+        ENFORCE_AUTH,
+        REQUIRE_CHAIN_FOR_PLAY_INTEGRITY,
+      ])
 
       return {
         enforceAuth,
+        requireChainForPlayIntegrity,
       }
     }),
   )
@@ -227,6 +302,7 @@ export const makeAuthPluginWithoutDependencies = Effect.gen(function*() {
       playIntegrityMiddleware,
       appAttestMiddleware,
       androidAttestationMiddleware,
+      formatAuthError,
     )
   }).pipe(
     Effect.provide(layerAuthMiddleware),

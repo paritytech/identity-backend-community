@@ -1,88 +1,89 @@
 import { describe, it } from '@effect/vitest'
-import { FastCheck as fc } from 'effect'
-import { decideAndroidDispatch } from '../dispatch.js'
+import { Arbitrary, Schema as S } from 'effect'
+import { AndroidDispatchInput, decideAndroidDispatch, KNOWN_ATTESTATION_TYPES } from '../dispatch.js'
 
-const KNOWN_TYPES = ['play-integrity', 'key-attestation'] as const
-
-const optString = fc.option(fc.string(), { nil: undefined })
-
-const attestationType = fc.oneof(
-  fc.constant<string | undefined>(undefined),
-  fc.constantFrom(...KNOWN_TYPES),
-  fc.string(),
+// Refined Schema: attestationType that is NOT one of the known types. The refinement
+// declares the type constraint; the annotated arbitrary generates constructively
+// (prefix guarantees non-collision, no .filter rejection trap).
+const UnknownAttestationType = S.String.pipe(
+  S.filter((value): value is string => !(KNOWN_ATTESTATION_TYPES as ReadonlyArray<string>).includes(value)),
+  S.annotations({
+    arbitrary: () => (fcApi) => fcApi.string().map((s) => `unknown-${s}`),
+  }),
 )
 
-const nonKeyAttestationType = attestationType.filter((t) => t !== 'key-attestation')
-
-const androidSignal = fc.oneof(
-  fc.record({ androidPackage: fc.string(), attestationToken: optString }),
-  fc.record({ androidPackage: fc.constant<string | undefined>(undefined), attestationToken: fc.string() }),
-)
+const AndroidDispatchInputArb = Arbitrary.make(AndroidDispatchInput)
+const UnknownAttestationTypeArb = Arbitrary.make(UnknownAttestationType)
 
 describe('decideAndroidDispatch', () => {
   it.prop(
     '∀Headers_IosPackagePresent_=Skip',
-    [fc.string(), optString, optString, attestationType],
-    ([iosPackage, androidPackage, attestationToken, type]) =>
-      decideAndroidDispatch({ iosPackage, androidPackage, attestationToken, attestationType: type })._tag === 'Skip',
+    [AndroidDispatchInputArb],
+    ([input]) => decideAndroidDispatch({ ...input, iosPackage: 'com.example.ios' })._tag === 'Skip',
   )
 
   it.prop(
     '∀Headers_KeyAttestationTypeNonIos_=KeyAttestation',
-    [optString, optString],
-    ([androidPackage, attestationToken]) =>
-      decideAndroidDispatch({
-        iosPackage: undefined,
-        androidPackage,
-        attestationToken,
-        attestationType: 'key-attestation',
-      })._tag === 'KeyAttestation',
+    [AndroidDispatchInputArb],
+    ([input]) =>
+      decideAndroidDispatch({ ...input, iosPackage: undefined, attestationType: 'key-attestation' })._tag ===
+        'KeyAttestation',
   )
 
   it.prop(
-    '∀Headers_NoAndroidSignalsNonKeyAttestation_=Skip',
-    [nonKeyAttestationType],
-    ([type]) =>
-      decideAndroidDispatch({
+    '∀Headers_VoucherTypeNonIos_=Voucher',
+    [AndroidDispatchInputArb],
+    ([input]) =>
+      decideAndroidDispatch({ ...input, iosPackage: undefined, attestationType: 'voucher' })._tag ===
+        'Voucher',
+  )
+
+  it.prop(
+    '∀Headers_NoAndroidSignalsNonKeyAttestationOrVoucher_=Skip',
+    [AndroidDispatchInputArb],
+    ([input]) => {
+      if (input.attestationType === 'key-attestation' || input.attestationType === 'voucher') return true
+      return decideAndroidDispatch({
         iosPackage: undefined,
         androidPackage: undefined,
         attestationToken: undefined,
-        attestationType: type,
-      })._tag === 'Skip',
+        attestationType: input.attestationType,
+      })._tag === 'Skip'
+    },
   )
 
   it.prop(
     '∀Headers_AndroidSignalNoType_=MissingType',
-    [androidSignal],
-    ([{ androidPackage, attestationToken }]) =>
+    [AndroidDispatchInputArb],
+    ([input]) =>
       decideAndroidDispatch({
         iosPackage: undefined,
-        androidPackage,
-        attestationToken,
+        androidPackage: input.androidPackage ?? 'com.example.app',
+        attestationToken: input.attestationToken ?? 'some-token',
         attestationType: undefined,
       })._tag === 'MissingAttestationType',
   )
 
   it.prop(
     '∀Headers_AndroidSignalPlayIntegrity_=PlayIntegrity',
-    [androidSignal],
-    ([{ androidPackage, attestationToken }]) =>
+    [AndroidDispatchInputArb],
+    ([input]) =>
       decideAndroidDispatch({
         iosPackage: undefined,
-        androidPackage,
-        attestationToken,
+        androidPackage: input.androidPackage ?? 'com.example.app',
+        attestationToken: input.attestationToken ?? 'some-token',
         attestationType: 'play-integrity',
       })._tag === 'PlayIntegrity',
   )
 
   it.prop(
     '∀Headers_AndroidSignalUnknownType_=UnknownType',
-    [androidSignal, fc.string().filter((s) => !KNOWN_TYPES.includes(s as typeof KNOWN_TYPES[number]))],
-    ([{ androidPackage, attestationToken }, type]) =>
+    [AndroidDispatchInputArb, UnknownAttestationTypeArb],
+    ([input, type]) =>
       decideAndroidDispatch({
         iosPackage: undefined,
-        androidPackage,
-        attestationToken,
+        androidPackage: input.androidPackage ?? 'com.example.app',
+        attestationToken: input.attestationToken ?? 'some-token',
         attestationType: type,
       })._tag === 'UnknownAttestationType',
   )

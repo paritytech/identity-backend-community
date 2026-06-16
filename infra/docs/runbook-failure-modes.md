@@ -189,13 +189,53 @@ listener's mTLS trust.
 pnpm sst deploy --stage $STAGE
 ```
 
+## FM-8: Invitation-ticket pool contending with username registration
+
+**Symptoms:** username-registration best-block inclusion latency
+rises while the invitation-ticket pool is filling; the startup log
+carries `INVITER_POOL_PRIVATE_KEY is unset: invitation ticket pool
+is sharing the attester proxy signer and will contend with username
+registration on the shared submission permit`; `INVITATION_TICKET_POOL_TARGET`
+is raised above the default (10000) but no dedicated pool key is set.
+
+**Diagnostic flow:**
+
+```bash
+STAGE=<stage>
+# 1. Confirm the fallback warning fired at startup (resolved signer address is attached)
+aws logs start-query --log-group-name /ecs/identity-backend-$STAGE \
+  --start-time $(date -d '-30 minutes' +%s) --end-time $(date +%s) \
+  --query-string 'fields @timestamp, @message | filter @message like /INVITER_POOL_PRIVATE_KEY is unset/'
+# 2. Confirm the elevated pool target is in effect
+aws ecs execute-command --cluster identity-backend-$STAGE --task <task-arn> \
+  --container app-identity --interactive --command "/bin/sh -c 'echo $INVITATION_TICKET_POOL_TARGET $INVITATION_TICKET_BATCH_SIZE'"
+```
+
+**Root cause:** when `INVITER_POOL_PRIVATE_KEY` is unset the
+invitation-ticket pool daemon and username registration share the
+single attester proxy signer's submission permit; a large pool
+target then starves registration.
+
+**Immediate fix:** register a dedicated invitation-pool account as
+a proxy of the attester on-chain (community bootstrap
+`12c-setup-attestation-proxy.sh`), set `INVITER_POOL_PRIVATE_KEY`
+and re-deploy. Until the
+dedicated account is ready, lower `INVITATION_TICKET_POOL_TARGET`
+back to the default (10000) so refill traffic is bounded.
+
+**Prevention:** pair `INVITER_POOL_PRIVATE_KEY` with any
+`INVITATION_TICKET_POOL_TARGET` / `INVITATION_TICKET_BATCH_SIZE`
+above their defaults — the runtime warns at startup when the pool
+lacks a dedicated signer.
+
 ## Where to look first
 
-| Symptom                                      | Start here                                                                  |
-| -------------------------------------------- | --------------------------------------------------------------------------- |
-| 5xx from the API                             | CloudWatch Logs `/ecs/identity-backend-$STAGE`                              |
-| Slow requests                                | LGTM Grafana → Explore → Tempo for the affected request ID                  |
-| Alerts firing but not actionable             | `infra/observability/grafana/alerting/rules.yaml` — what does the rule say? |
-| Deploy failed                                | SST console (`pnpm sst console --stage $STAGE`) — most recent deploy event  |
-| Secret rotation not taking effect            | Force a new ECS deployment (see FM-5)                                       |
-| Cloudflare block in effect for legitimate UA | `infra/edge.ts#BLOCKED_USER_AGENTS` — add or remove entries as needed       |
+| Symptom                                       | Start here                                                                  |
+| --------------------------------------------- | --------------------------------------------------------------------------- |
+| 5xx from the API                              | CloudWatch Logs `/ecs/identity-backend-$STAGE`                              |
+| Slow requests                                 | LGTM Grafana → Explore → Tempo for the affected request ID                  |
+| Alerts firing but not actionable              | `infra/observability/grafana/alerting/rules.yaml` — what does the rule say? |
+| Deploy failed                                 | SST console (`pnpm sst console --stage $STAGE`) — most recent deploy event  |
+| Secret rotation not taking effect             | Force a new ECS deployment (see FM-5)                                       |
+| Cloudflare block in effect for legitimate UA  | `infra/edge.ts#BLOCKED_USER_AGENTS` — add or remove entries as needed       |
+| Registration latency rising / pool contention | startup warning `INVITER_POOL_PRIVATE_KEY is unset` → see FM-8              |

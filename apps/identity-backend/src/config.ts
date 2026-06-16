@@ -89,6 +89,26 @@ export const ATTESTER_PROXY_PRIVATE_KEY = pipe(
     'Private key for the attester proxy account. Required when PROXY_DELEGATION_ENABLED=true.',
   ),
 )
+export const INVITER_POOL_PRIVATE_KEY = pipe(
+  Config.nonEmptyString('INVITER_POOL_PRIVATE_KEY'),
+  Config.map((s) => s.trim()),
+  Config.map((s) => (s.startsWith('0x') ? s.slice(2) : s)),
+  Config.mapOrFail(
+    flow(
+      S.decodeEither(S.compose(S.Uint8ArrayFromHex, sr25519.PrivateKey)),
+      Either.mapLeft((err) => ConfigError.InvalidData([], err.message)),
+    ),
+  ),
+  Config.map(Redacted.make),
+  Config.option,
+  Config.withDescription(
+    'Optional dedicated signing key for the invitation-ticket pool worker. When set, the pool submits ' +
+      'on its own account, so it never contends with username registration on the shared per-account ' +
+      'submission permit. Like ATTESTER_PROXY_PRIVATE_KEY, this account is a proxy submitter for the ' +
+      'attester authority: it must be funded and registered as a proxy of the attester. Falls back to ' +
+      'the existing attester proxy signer (the account the invitation pool uses today) when unset.',
+  ),
+)
 
 export const ROUTE_TIMEOUT = pipe(
   Config.duration('ROUTE_TIMEOUT'),
@@ -278,6 +298,31 @@ export const REGISTRATION_QUEUE_MAX_CAPACITY = Config.integer('REGISTRATION_QUEU
 export const INVITATION_TICKET_DAEMON_ENABLED = Config.boolean('INVITATION_TICKET_DAEMON_ENABLED').pipe(
   Config.withDefault(true),
   Config.withDescription('Feature flag to enable the invitation ticket daemon that fills the ticket pool'),
+)
+
+export const INVITATION_TICKET_POOL_TARGET = pipe(
+  Config.integer('INVITATION_TICKET_POOL_TARGET'),
+  Config.withDefault(10_000),
+  Config.withDescription(
+    'Target available-ticket count per (dim, network) the invitation-ticket pool daemon refills toward. ' +
+      'Only raise this in environments where the pool submits on a dedicated account ' +
+      '(INVITER_POOL_PRIVATE_KEY); otherwise it contends with username registration.',
+  ),
+)
+
+export const INVITATION_TICKET_BATCH_SIZE = pipe(
+  Config.integer('INVITATION_TICKET_BATCH_SIZE'),
+  Config.withDefault(100),
+  Config.mapOrFail(
+    flow(
+      S.decodeEither(BatchSize.pipe(S.annotations({ name: 'INVITATION_TICKET_BATCH_SIZE' }))),
+      Either.mapLeft((err) => ConfigError.InvalidData([], err.message)),
+    ),
+  ),
+  Config.withDescription(
+    'Max tickets the invitation-ticket pool daemon submits per batch. The dynamic policy halves it on ' +
+      'resource exhaustion and grows it back, so a value above the chain per-block limit self-corrects.',
+  ),
 )
 
 export const FINALIZED_BLOCK_DAEMON_ENABLED = Config.boolean('FINALIZED_BLOCK_DAEMON_ENABLED').pipe(
@@ -521,6 +566,16 @@ export const CHALLENGE_TTL_SECONDS = pipe(
     'Lifetime in seconds for challenges issued by POST /api/v1/auth/challenges. A challenge older than this ' +
       'when consumed is treated as not found. Default 5 minutes — long enough for slow networks, short enough ' +
       'to limit replay window. Must be positive: a zero or negative value would reject every token (config DoS).',
+  ),
+)
+
+export const REQUIRE_CHAIN_FOR_PLAY_INTEGRITY = pipe(
+  Config.boolean('REQUIRE_CHAIN_FOR_PLAY_INTEGRITY'),
+  Config.withDefault(false),
+  Config.withDescription(
+    'When true, Android key-attestation certificate chains are REQUIRED for Play Integrity requests. ' +
+      'When false (default), missing chains are accepted and Play Integrity runs without chain verification. ' +
+      'Independent of ENFORCE_AUTH.',
   ),
 )
 

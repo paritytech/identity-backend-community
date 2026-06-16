@@ -4,13 +4,11 @@ import { OnChainTicketAPIError } from '#root/features/dim/onchain-ticket.adapter
 import { expect } from '@effect/vitest'
 import { And, Given, Then, When } from '@identity-backend/effect-vitest-gherkin'
 import { Effect, HashMap } from 'effect'
-import { DIM_GAME, DIM_PROOF_OF_INK, NETWORK_WESTEND2, POOL_TARGET } from '../helpers/constants.js'
+import { BATCH_SIZE, DIM_GAME, DIM_PROOF_OF_INK, NETWORK_WESTEND2, POOL_TARGET } from '../helpers/constants.js'
 import { cleanUp, countTickets, insertAvailableTicket } from '../helpers/db-helpers.js'
 import { generateTestTicket } from '../helpers/factories.js'
 import { FakeOnChainTicketAPI } from '../helpers/fakes/onchain-api.js'
 import { feature, testLayer } from '../helpers/layers.js'
-
-const BATCH_SIZE = 10
 
 feature('Invitation Ticket Pool Maintenance')
   .withScenarioLayer(testLayer)

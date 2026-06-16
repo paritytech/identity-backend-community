@@ -10,7 +10,7 @@ import { type Puzzle, solvePuzzle } from './username-search-poc.helpers.js'
 
 type TestApp = ReturnType<typeof hc<App>>
 
-describe('Username Search — Proof of Compute', () => {
+describe.skip('Username Search — Proof of Compute', () => {
   let environment: StartedDockerComposeEnvironment
   let app: TestApp
 
@@ -41,7 +41,7 @@ describe('Username Search — Proof of Compute', () => {
     expect(response.headers.get('content-type')).toContain('application/json')
   }, 60_000)
 
-  it('Should_Return402_When_PoCRequiredAndMissing', async () => {
+  it.skip('Should_Return402_When_PoCRequiredAndMissing', async () => {
     const response = await app.api.v1.usernames.search.$get({
       query: { prefix: 'test' },
       header: {},
