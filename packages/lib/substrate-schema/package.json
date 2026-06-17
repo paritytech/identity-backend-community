@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@identity-backend/schema-extensions": "workspace:^",
-    "@polkadot-labs/hdkd-helpers": "0.0.19"
+    "@polkadot-labs/hdkd-helpers": "0.0.30"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",

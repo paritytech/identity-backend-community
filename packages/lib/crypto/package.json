@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@identity-backend/substrate-schema": "workspace:^",
-    "@polkadot-labs/schnorrkel-wasm": "^0.0.7"
+    "@polkadot-labs/schnorrkel-wasm": "^0.0.9"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
