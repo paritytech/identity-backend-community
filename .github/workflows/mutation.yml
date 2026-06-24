@@ -62,7 +62,7 @@ jobs:
       - uses: ./.github/actions/install-deps
 
       # Restore stryker incremental cache from main branch (read-only for PRs)
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: ${{ matrix.package }}/reports/stryker-incremental.json
           key: ${{ runner.os }}-stryker-${{ matrix.package }}-main
@@ -73,7 +73,7 @@ jobs:
         run: corepack pnpm turbo mutation --filter=./${{ matrix.package }}
 
       # Save stryker incremental cache only on main branch
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: github.ref == 'refs/heads/main'
         with:
           path: ${{ matrix.package }}/reports/stryker-incremental.json
