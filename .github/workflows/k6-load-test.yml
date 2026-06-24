@@ -21,7 +21,7 @@ jobs:
       app_hash: ${{ steps.compute-app.outputs.hash }}
       chopsticks_hash: ${{ steps.compute-chopsticks.outputs.hash }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/install-deps
 
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/install-docker-compose
       - uses: ./.github/actions/cache-images
         with:
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/install-apt-packages
         with:

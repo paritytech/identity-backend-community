@@ -26,7 +26,7 @@ jobs:
       IMAGE_NAME: ${{ github.event.repository.name }}
       GAR_REGISTRY: "us-docker.pkg.dev/polkadot-community-foundation/identity-backend"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set version
         id: version
