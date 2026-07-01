@@ -69,7 +69,7 @@ catalog:
   fast-check: ^3
   nanoid: ^5.1.11
   pg-copy-streams: ^7.0.0
-  polkadot-api: ^2.1.6
+  polkadot-api: ^2.1.7
   rollup-plugin-visualizer: ^7.0.1
   rxjs: ^7.8.2
   semantic-release: ^25.0.3
