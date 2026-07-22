@@ -47,7 +47,7 @@
     "@vitest/coverage-v8": "catalog:",
     "effect": "catalog:",
     "tsdown": "catalog:",
-    "tstyche": "^7.1.0",
+    "tstyche": "^7.2.2",
     "typescript": "^6.0.3",
     "vitest": "catalog:"
   },

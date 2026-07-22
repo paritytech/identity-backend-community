@@ -60,7 +60,7 @@
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@vitest/coverage-v8": "catalog:",
     "effect": "catalog:",
-    "hono": "^4.12.22",
+    "hono": "^4.12.31",
     "tsdown": "catalog:",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "catalog:"
@@ -71,7 +71,7 @@
     "@identity-backend/auth": "workspace:^",
     "@identity-backend/play-integrity": "workspace:^",
     "effect": "catalog:",
-    "hono": "^4.12.22"
+    "hono": "^4.12.31"
   },
   "publishConfig": {
     "exports": {
