@@ -50,7 +50,7 @@
     "@effect/rpc": "catalog:",
     "@effect/sql-pg": "catalog:",
     "@hono/effect-validator": "^1.2.0",
-    "@hono/node-server": "^2.0.3",
+    "@hono/node-server": "^2.0.10",
     "@hono/zod-openapi": "^1.3.0",
     "@hono/zod-validator": "^0.7.6",
     "@identity-backend/android-attest": "workspace:^",
