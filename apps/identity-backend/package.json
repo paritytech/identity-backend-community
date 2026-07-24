@@ -103,7 +103,7 @@
     "drizzle-orm": "1.0.0-beta.22",
     "effect": "catalog:",
     "firebase-admin": "^13.8.0",
-    "hono": "^4.12.22",
+    "hono": "^4.12.27",
     "hono-rate-limiter": "^0.5.3",
     "jose": "^6.2.2",
     "pg": "^8.21.0",
