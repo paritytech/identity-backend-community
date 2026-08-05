@@ -44,7 +44,7 @@ catalog:
   "@opentelemetry/semantic-conventions": ^1.41
   "@polkadot-api/json-rpc-provider": ^0.2.0
   "@polkadot-api/metadata-builders": ^0.14.3
-  "@polkadot-api/observable-client": ^0.18.7
+  "@polkadot-api/observable-client": ^0.18.8
   "@polkadot-api/polkadot-signer": ^0.1.6
   "@polkadot-api/signer": ^0.3.3
   "@polkadot-api/substrate-bindings": ^0.20.3
@@ -69,7 +69,7 @@ catalog:
   fast-check: ^3
   nanoid: ^5.1.11
   pg-copy-streams: ^7.0.0
-  polkadot-api: ^2.1.6
+  polkadot-api: ^2.2.2
   rollup-plugin-visualizer: ^7.0.1
   rxjs: ^7.8.2
   semantic-release: ^25.0.3
