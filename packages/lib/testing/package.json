@@ -36,12 +36,12 @@
     "@identity-backend/oxlint-config": "workspace:^",
     "effect": "catalog:",
     "tsdown": "catalog:",
-    "hono": "^4.12.22",
+    "hono": "^4.13.1",
     "vitest": "catalog:"
   },
   "peerDependencies": {
     "effect": "catalog:",
-    "hono": "^4.12.22",
+    "hono": "^4.13.1",
     "vitest": "catalog:"
   },
   "publishConfig": {
