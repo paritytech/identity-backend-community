@@ -1,3 +1,6 @@
+> [!CAUTION]
+> **This repository is being archived.** Development has moved to **[`paritytech/device-uniqueness-backend-community`](https://github.com/paritytech/device-uniqueness-backend-community)**, which is now the active backend. Use that repository for issues, pull requests, deploys, and the latest releases. Everything here is kept for historical reference only and will no longer receive updates.
+
 > [!WARNING]
 > The following is a prototype, reference implementation, and proof-of-concept. This open source code is provided for research, experimentation, and developer education only. This code has not been audited, is actively experimental, and may contain bugs, vulnerabilities, or incomplete features. Use at your own risk.
 
